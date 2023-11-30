@@ -1,4 +1,4 @@
 /fewshotbench_v2/data/*
 /fewshotbench/data/*
-/comet/TM/data*
-/comet/CUB/data* 
+/comet/TM/data/*
+/comet/CUB/data/* 
