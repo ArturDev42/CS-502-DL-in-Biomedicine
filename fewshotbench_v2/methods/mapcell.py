@@ -8,7 +8,7 @@ from methods.meta_template import MetaTemplate
 
 class SiameseMAML(MetaTemplate):
     def __init__(self, input_shape, n_way, n_support, n_task, task_update_num, inner_lr, approx=False):
-        super(SiameseMAML, self).__init__()
+        super(SiameseMAML, self).__init__(backbone, n_way, n_support, change_way=False)
 
         self.classifier = nn.Linear(self.feat_dim, n_way)
         self.n_task = n_task

@@ -1,0 +1,6 @@
+defaults:
+  - meta_base
+
+name: mapcell
+cls:
+  _target_: methods.mapcell.SiameseMAML
