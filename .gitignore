@@ -14,3 +14,6 @@
 /comet_new/TM/wandb/*
 /comet_new/CUB/data/* 
 /comet_new/TM/checkpoints/*
+/comet_new/TM/filelists/tabula_muris/tabula-muris-comet.h5ad
+/fewshotbench/conf/dataset/tabula_muris/tabula-muris-comet.h5ad
+/fewshotbench/NVIDIA-Linux-x86_64-525.125.06.run 
