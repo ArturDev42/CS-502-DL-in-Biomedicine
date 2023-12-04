@@ -1,4 +1,16 @@
 /fewshotbench_v2/data/*
 /fewshotbench/data/*
+/fewshotbench/checkpoints/*
+/fewshotbench_v2/checkpoints/*
+/fewshotbench/outputs/*
+/fewshotbench_v2/outputs/*
+/fewshotbench/wandb/*
+/fewshotbench_v2/wandb/*
 /comet/TM/data/*
 /comet/CUB/data/* 
+/comet/TM/wandb/*
+/comet/TM/checkpoints/*
+/comet_new/TM/data/*
+/comet_new/TM/wandb/*
+/comet_new/CUB/data/* 
+/comet_new/TM/checkpoints/*
