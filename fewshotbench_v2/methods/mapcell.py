@@ -7,14 +7,11 @@ from methods.meta_template import MetaTemplate
 
 
 class SiameseMAML(MetaTemplate):
-    def __init__(self, input_shape, n_way, n_support, n_task, task_update_num, inner_lr, approx=False):
-        super(SiameseMAML, self).__init__(backbone, n_way, n_support, change_way=False)
+    def __init__(self, backbone, n_way, n_support):
+        super(SiameseMAML, self).__init__(backbone, n_way, n_support)
+        print("SiameseMAML(MetaTemplate)")
 
         self.classifier = nn.Linear(self.feat_dim, n_way)
-        self.n_task = n_task
-        self.task_update_num = task_update_num
-        self.inner_lr = inner_lr
-        self.approx = approx
 
         if n_way == 1:
             self.type = "regression"
@@ -24,8 +21,8 @@ class SiameseMAML(MetaTemplate):
             self.loss_fn = nn.CrossEntropyLoss()
 
         # Create Siamese subnetworks
-        self.subnetwork1 = self.create_subnetwork(input_shape)
-        self.subnetwork2 = self.create_subnetwork(input_shape)
+        self.subnetwork1 = self.create_subnetwork(self.feat_dim)
+        self.subnetwork2 = self.create_subnetwork(self.feat_dim)
 
         # Set the weights of the second subnetwork to be equal to those of the first
         self.subnetwork2.load_state_dict(self.subnetwork1.state_dict())
@@ -50,16 +47,21 @@ class SiameseMAML(MetaTemplate):
         return model
 
     def forward(self, x):
+        print("forward(self,x)")
         output1 = self.subnetwork1(x[0])
         output2 = self.subnetwork2(x[1])
-        # TODO: should output scores... how do we decide (similarity)
         return output1, output2
 
     def set_forward(self, x, y=None):
+        print("set_forward(self,x)")
         # Process inputs through the Siamese network
         output1, output2 = self(x)
 
+        # AD: Squared Euclidean distance between output1 and output2?
+        # AD: https://kevinmusgrave.github.io/pytorch-metric-learning/losses/#contrastiveloss
         # Compute contrastive loss
+        # TODO: here only distance - change to loss
+        # (1−Y)12(Dw)2+12{max(0,margin−Dw)}2
         contrastive_loss = -torch.sum((output1 - output2) ** 2)
 
         # Perform task updates
