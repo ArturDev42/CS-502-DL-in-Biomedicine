@@ -15,13 +15,14 @@ class ProtoNet(MetaTemplate):
 
     def set_forward(self, x, is_feature=False):
         z_support, z_query = self.parse_feature(x, is_feature)
-
+ 
         z_support = z_support.contiguous()
         z_proto = z_support.view(self.n_way, self.n_support, -1).mean(1)  # the shape of z is [n_data, n_dim]
         z_query = z_query.contiguous().view(self.n_way * self.n_query, -1)
 
         dists = euclidean_dist(z_query, z_proto)
         scores = -dists
+
         return scores
 
 
@@ -30,6 +31,10 @@ class ProtoNet(MetaTemplate):
         y_query = Variable(y_query.cuda())
 
         scores = self.set_forward(x)
+
+        print("self.loss_fn(scores, y_query )")
+        print("scores", scores)
+        print("y_query", y_query)
 
         return self.loss_fn(scores, y_query )
 

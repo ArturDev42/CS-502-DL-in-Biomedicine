@@ -6,10 +6,9 @@ from torch.autograd import Variable
 from methods.meta_template import MetaTemplate
 
 
-class SiameseMAML(MetaTemplate):
+class MapCell(MetaTemplate):
     def __init__(self, backbone, n_way, n_support):
-        super(SiameseMAML, self).__init__(backbone, n_way, n_support)
-        print("SiameseMAML(MetaTemplate)")
+        super(MapCell, self).__init__(backbone, n_way, n_support)
 
         self.classifier = nn.Linear(self.feat_dim, n_way)
 
@@ -46,131 +45,95 @@ class SiameseMAML(MetaTemplate):
         )
         return model
 
-    def forward(self, x):
-        print("forward(self,x)")
+    def forward_snn(self, x):
         output1 = self.subnetwork1(x[0])
         output2 = self.subnetwork2(x[1])
-        return output1, output2
 
-    def set_forward(self, x, y=None):
-        print("set_forward(self,x)")
-        # Process inputs through the Siamese network
-        output1, output2 = self(x)
-
-        # AD: Squared Euclidean distance between output1 and output2?
-        # AD: https://kevinmusgrave.github.io/pytorch-metric-learning/losses/#contrastiveloss
-        # Compute contrastive loss
         # TODO: here only distance - change to loss
         # (1−Y)12(Dw)2+12{max(0,margin−Dw)}2
-        contrastive_loss = -torch.sum((output1 - output2) ** 2)
+        euclidean_dist_embeddings = -torch.sum((output1 - output2) ** 2)
 
-        # Perform task updates
-        for task_step in range(self.task_update_num):
-            grads = torch.autograd.grad(contrastive_loss, self.subnetwork1.parameters(), create_graph=True)
-            fast_parameters = [w - self.inner_lr * g for w, g in zip(self.subnetwork1.parameters(), grads)]
-            for param, fast_param in zip(self.subnetwork1.parameters(), fast_parameters):
-                param.data = fast_param.data
+        # snn_distance = 
 
-        # Process query set through the updated subnetwork
-        updated_output1, _ = self(x[2])
+        return snn_distance
 
-        return updated_output1
+    # TODO: Prepare data for SNN
+    # Construct sample paris from the prototype vector set
+    # Pair ech sample in the support set with all the prototype vectors
+    # If two items in a pair are in the same class, label = 1, otherwise label = 0
+    def construct_sample_pairs(self, z_proto, z_query):
+        return None
 
-    def set_forward_loss(self, x, y=None):
-        # Process inputs through set_forward
-        updated_output = self.set_forward(x, y)
+    def set_forward(self, x, is_feature=False):
+        # Slide 16, Mete-Learning Lec: Explanation of z_support, z_query 
+        z_support, z_query = self.parse_feature(x, is_feature)
+ 
+        z_support = z_support.contiguous()
+        z_proto = z_support.view(self.n_way, self.n_support, -1).mean(1)  # the shape of z is [n_data, n_dim]
+        z_query = z_query.contiguous().view(self.n_way * self.n_query, -1)
 
-        if y is None:  # Classification task
-            y_b_i = Variable(torch.from_numpy(np.repeat(range(self.n_way), self.n_query)))
-        else:  # Regression task
-            y_var = Variable(y)
-            y_b_i = y_var[:, self.n_support:].contiguous().view(self.n_way * self.n_query, *y.size()[2:])
+        # TODO: Logic for returning SNN distances
+        # Call construct_sample_pairs()
+        # Pass prepared data to SNN
+        # ...  
+        dists = euclidean_dist(z_query, z_proto)
+        scores = -dists
 
-        if torch.cuda.is_available():
-            y_b_i = y_b_i.cuda()
+        return scores
+    
 
-        loss = self.loss_fn(updated_output, y_b_i)
+    def set_forward_loss(self, x):
+        # TODO: Same type of change as for set_forward() necessary?
 
-        return loss
+        y_query = torch.from_numpy(np.repeat(range( self.n_way ), self.n_query ))
+        y_query = Variable(y_query.cuda())
 
-# todo: make optimizer variable
-    def train_loop(self, epoch, train_loader):
-        print_freq = 10
-        avg_loss = 0
-        task_count = 0
-        loss_all = []
+        scores = self.set_forward(x)
 
-        for i, (x, y) in enumerate(train_loader):
-            if task_count == 0:
-                self.optimizer.zero_grad()
+        print("self.loss_fn(scores, y_query )")
+        print("scores", scores)
+        print("y_query", y_query)
 
-            # list containing support set, query set, and corresponding labels
-            x_support, x_query, y_batch = x
+        return self.loss_fn(scores, y_query )
 
-            # Labels are assigned later if classification task
-            if self.type == "classification":
-                y_batch = None
 
-            # Convert NumPy arrays to PyTorch tensors
-            x_support = torch.from_numpy(x_support).float()
-            x_query = torch.from_numpy(x_query).float()
-            y_batch = torch.from_numpy(y_batch).float()
+    # def set_forward(self, x, y=None):
+    #     # Process inputs through the Siamese network
+    #     output1, output2 = self(x)
 
-            # Set up input for the Siamese network
-            inputs = [x_support[0:1], x_support[1:2], x_query[0:1]]
+    #     # AD: Squared Euclidean distance between output1 and output2?
+    #     # AD: https://kevinmusgrave.github.io/pytorch-metric-learning/losses/#contrastiveloss
+    #     # Compute contrastive loss
+    #     # TODO: here only distance - change to loss
+    #     # (1−Y)12(Dw)2+12{max(0,margin−Dw)}2
+    #     contrastive_loss = -torch.sum((output1 - output2) ** 2)
 
-            # Calculate loss using set_forward_loss method
-            loss = self.set_forward_loss(inputs, y_batch)
+    #     # Perform task updates
+    #     for task_step in range(self.task_update_num):
+    #         grads = torch.autograd.grad(contrastive_loss, self.subnetwork1.parameters(), create_graph=True)
+    #         fast_parameters = [w - self.inner_lr * g for w, g in zip(self.subnetwork1.parameters(), grads)]
+    #         for param, fast_param in zip(self.subnetwork1.parameters(), fast_parameters):
+    #             param.data = fast_param.data
 
-            avg_loss += loss.item()
-            loss_all.append(loss.item())
-            task_count += 1
+    #     # Process query set through the updated subnetwork
+    #     updated_output1, _ = self(x[2])
 
-            if task_count == self.n_task:
-                avg_loss /= self.n_task
-                loss.backward()
-                self.optimizer.step()
-                task_count = 0
-                loss_all = []
+    #     return updated_output1
 
-            if i % print_freq == 0:
-                print('Epoch {:d} | Batch {:d}/{:d} | Loss {:f}'.format(epoch, i, len(train_loader),
-                                                                        avg_loss / float(i + 1)))
+    # def set_forward_loss(self, x, y=None):
+    #     # Process inputs through set_forward
+    #     updated_output = self.set_forward(x, y)
 
-    def test_loop(self, test_loader, return_std=False):
-        correct = 0
-        count = 0
-        acc_all = []
+    #     if y is None:  # Classification task
+    #         y_b_i = Variable(torch.from_numpy(np.repeat(range(self.n_way), self.n_query)))
+    #     else:  # Regression task
+    #         y_var = Variable(y)
+    #         y_b_i = y_var[:, self.n_support:].contiguous().view(self.n_way * self.n_query, *y.size()[2:])
 
-        iter_num = len(test_loader)
-        for i, (x, y) in enumerate(test_loader):
-            # list containing support set, query set, and corresponding labels
-            x_support, x_query, y_batch = x
+    #     if torch.cuda.is_available():
+    #         y_b_i = y_b_i.cuda()
 
-            if self.type == "classification":
-                # should be there from meta template
-                correct_this, count_this = self.correct(x)
-                acc_all.append(correct_this / count_this * 100)
-            else:
-                # Use pearson correlation
-                acc_all.append(self.correlation(x, y))
+    #     loss = self.loss_fn(updated_output, y_b_i)
 
-            # Convert NumPy arrays to PyTorch tensors
-            x_support = torch.from_numpy(x_support).float()
-            x_query = torch.from_numpy(x_query).float()
-            y_batch = torch.from_numpy(y_batch).float()
+    #     return loss
 
-            acc_all = np.asarray(acc_all)
-            acc_mean = np.mean(acc_all)
-            acc_std = np.std(acc_all)
-
-        if self.type == "classification":
-            print('%d Accuracy = %4.2f%% +- %4.2f%%' % (iter_num, acc_mean, 1.96 * acc_std / np.sqrt(iter_num)))
-        else:
-            # print correlation
-            print('%d Correlation = %4.2f +- %4.2f' % (iter_num, acc_mean, 1.96 * acc_std / np.sqrt(iter_num)))
-
-        if return_std:
-            return acc_mean, acc_std
-        else:
-            return acc_mean

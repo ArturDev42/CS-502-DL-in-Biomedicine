@@ -30,6 +30,6 @@ checkpoint:
 wandb:
   project: dl-team-18
   entity: tim-wiebelhaus
-  mode: "online" # Can set to offline, disabled
+  mode: "offline" # Can set to offline, disabled
 
 iter_num: 600

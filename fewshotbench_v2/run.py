@@ -58,21 +58,21 @@ def preprocess_siamese_data(data, labels):
 
     idx = [np.where(labels == i)[0] for i in range(0, numClasses)]
     for sampleIdx in range(len(labels)):
-		sample = data[sampleIdx]
-		label = labels[sampleIdx]
-		# randomly pick a sample that belongs to the same class
-		posSampleIdx = np.random.choice(idx[label])
-		posSample = data[posSampleIdx]
-		# create a positive pair
-		pairs.append([sample, posSample])
-		pairLabels.append([1])
+        sample = data[sampleIdx]
+        label = labels[sampleIdx]
+        # randomly pick a sample that belongs to the same class
+        posSampleIdx = np.random.choice(idx[label])
+        posSample = data[posSampleIdx]
+        # create a positive pair
+        pairs.append([sample, posSample])
+        pairLabels.append([1])
 
         negIdx = np.where(labels != label)[0]
-		negSample = data[np.random.choice(negIdx)]
+        negSample = data[np.random.choice(negIdx)]
 		# prepare a negative pair of samples and update our lists
-		pairs.append([sample, negSample])
-		pairLabels.append([0])
-
+        pairs.append([sample, negSample])
+        pairLabels.append([0])
+        
     return pairs, pairLabels
 
 @hydra.main(version_base=None, config_path='conf', config_name='main')
