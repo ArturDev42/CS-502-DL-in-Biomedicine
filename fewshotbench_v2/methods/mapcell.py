@@ -131,6 +131,9 @@ class MapCell(MetaTemplate):
         # query_pair[0] = query_pair[0].contiguous().view(self.n_way * self.n_query, -1)
         # query_pair[1] = query_pair[1].contiguous().view(self.n_way * self.n_query, -1)
 
+        # TODO: update - 
+        # z_proto = z_support.view(self.n_way, self.n_support, -1).mean(1)  # the shape of z is [n_data, n_dim]
+        # z_query = z_query.contiguous().view(self.n_way * self.n_query, -1)
         print("query_pair after")
         print(query_pair[0].size())
 
