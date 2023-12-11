@@ -54,6 +54,7 @@ class MapCell(MetaTemplate):
         scores = self.subnetwork1(x)
         print("scores: ", scores)
         y_query = np.repeat(range(self.n_way), self.n_query)
+        print(y_query)
 
         topk_scores, topk_labels = scores.data.topk(1, 1, True, True)
         topk_ind = topk_labels.cpu().numpy()
@@ -79,17 +80,17 @@ class MapCell(MetaTemplate):
         one_vector = torch.ones_like(labels)
         one_vector = one_vector.to(self.device)
 
-        print(labels)
-        print(one_vector)
-        print(euclidean_dist_embeddings)
+        # print(labels)
+        # print(one_vector)
+        # print(euclidean_dist_embeddings)
 
         margin_vector = torch.full(euclidean_dist_embeddings.size(), margin).to(self.device)
-        print(margin_vector.shape)
+        # print(margin_vector.shape)
 
-        print(margin_vector.dtype)
-        print(labels.dtype)
-        print(one_vector.dtype)
-        print(euclidean_dist_embeddings.dtype)
+        # print(margin_vector.dtype)
+        # print(labels.dtype)
+        # print(one_vector.dtype)
+        # print(euclidean_dist_embeddings.dtype)
         first_term = torch.matmul(one_vector.float()-labels.float(),euclidean_dist_embeddings**2)*0.5
 
         second_term = 0.5*torch.maximum(torch.tensor(0),margin_vector-euclidean_dist_embeddings)**2
@@ -162,7 +163,6 @@ class MapCell(MetaTemplate):
         avg_loss = 0
         for i, (x, y) in enumerate(train_loader):
             if isinstance(x, list):
-                print("x", x)
                 self.n_query = x[0].size(1) - self.n_support
                 if self.change_way:
                     self.n_way = x[0].size(0)
