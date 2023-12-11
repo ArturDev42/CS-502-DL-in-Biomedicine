@@ -11,6 +11,7 @@ from methods.meta_template import MetaTemplate
 class ProtoNet(MetaTemplate):
     def __init__(self, backbone, n_way, n_support):
         super(ProtoNet, self).__init__(backbone, n_way, n_support)
+        print("ProtoNet Backbone:", backbone)
         self.loss_fn = nn.CrossEntropyLoss()
 
     def set_forward(self, x, is_feature=False):
@@ -32,9 +33,10 @@ class ProtoNet(MetaTemplate):
 
         scores = self.set_forward(x)
 
-        print("self.loss_fn(scores, y_query )")
+        #print("self.loss_fn(scores, y_query )")
         print("scores", scores)
-        print("y_query", y_query)
+        print(scores.size())
+        #print("y_query", y_query)
 
         return self.loss_fn(scores, y_query )
 

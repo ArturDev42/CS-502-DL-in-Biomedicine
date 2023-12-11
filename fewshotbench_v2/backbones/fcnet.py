@@ -23,6 +23,10 @@ class FCNet(nn.Module):
         self.final_feat_dim = layer_dim[-1]
 
     def forward(self, x):
+        print("class FCNet(nn.Module) forward(self,x)")
+        print("Before Encoder")
+        print(x.size())
+        print(x)
         x = self.encoder(x)
         return x.view(x.size(0), -1)
 

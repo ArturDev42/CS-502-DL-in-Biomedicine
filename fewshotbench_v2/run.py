@@ -18,9 +18,6 @@ def initialize_dataset_model(cfg):
     else:
         raise ValueError(f"Unknown method type: {cfg.method.type}")
     
-    if cfg.method.name == 'mapcell':
-        train_dataset.samples, train_dataset.targets = preprocess_siamese_data(train_dataset.samples, train_dataset.targets)
-    
     train_loader = train_dataset.get_data_loader()
 
     # Instantiate val dataset as specified in dataset config under simple_cls or set_cls
@@ -48,32 +45,6 @@ def initialize_dataset_model(cfg):
 
     return train_loader, val_loader, model
 
-def preprocess_siamese_data(data, labels):
-    """
-    Preprocess data and labels for Siamese Neural Network training.
-    """
-
-    classes = np.unique(labels)
-    pairs, pairLabels = [], []
-
-    idx = [np.where(labels == i)[0] for i in range(0, numClasses)]
-    for sampleIdx in range(len(labels)):
-        sample = data[sampleIdx]
-        label = labels[sampleIdx]
-        # randomly pick a sample that belongs to the same class
-        posSampleIdx = np.random.choice(idx[label])
-        posSample = data[posSampleIdx]
-        # create a positive pair
-        pairs.append([sample, posSample])
-        pairLabels.append([1])
-
-        negIdx = np.where(labels != label)[0]
-        negSample = data[np.random.choice(negIdx)]
-		# prepare a negative pair of samples and update our lists
-        pairs.append([sample, negSample])
-        pairLabels.append([0])
-        
-    return pairs, pairLabels
 
 @hydra.main(version_base=None, config_path='conf', config_name='main')
 def run(cfg):

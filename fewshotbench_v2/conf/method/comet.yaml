@@ -4,3 +4,7 @@ defaults:
 name: comet
 cls:
   _target_: methods.comet.COMET
+
+backbone:
+  _target_: backbones.fcnet.EnFCNet
+  layer_dim: [ 64, 64 ]

@@ -2,6 +2,7 @@ defaults:
   - dataset: tabula_muris
   - method: maml
 
+#model: EnFCNet
 model: FCNet
 n_way: ???
 n_shot: ???
