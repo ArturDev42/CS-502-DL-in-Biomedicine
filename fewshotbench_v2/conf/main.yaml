@@ -1,36 +1,28 @@
-defaults:
-  - dataset: tabula_muris
-  - method: maml
-
-#model: EnFCNet
-model: FCNet
-n_way: ???
-n_shot: ???
-n_query: ???
-
-mode: train
-
-exp:
-  name: ???
-  save_freq: 10
-  resume: false
-  seed: 42
-  val_freq: 1
-
-optimizer: Adam
-lr: 0.001
-optimizer_cls:
-  _target_: torch.optim.${optimizer}
-  lr: ${lr}
-
 checkpoint:
   dir: checkpoints/${exp.name}/${dataset.name}/${method.name}_${model}
   test_iter: best_model
   time: latest
-
+defaults:
+- dataset: tabula_muris
+- method: maml
+exp:
+  name: baseline_iter30_lr0p001
+  resume: false
+  save_freq: 10
+  seed: 42
+  val_freq: 1
+iter_num: 10
+lr: 0.001
+mode: train
+model: FCNet
+n_query: ???
+n_shot: ???
+n_way: ???
+optimizer: Adam
+optimizer_cls:
+  _target_: torch.optim.${optimizer}
+  lr: ${lr}
 wandb:
-  project: dl-team-18
   entity: tim-wiebelhaus
-  mode: "offline" # Can set to offline, disabled
-
-iter_num: 600
+  mode: offline
+  project: dl-team-18

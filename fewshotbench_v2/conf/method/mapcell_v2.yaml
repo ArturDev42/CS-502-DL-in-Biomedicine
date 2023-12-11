@@ -1,0 +1,7 @@
+defaults:
+  - baseline
+
+cls:
+  _target_: methods.mapcell_v2.MapCell_new
+
+name: mapcell_v2

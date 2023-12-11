@@ -21,6 +21,8 @@ class COMET(MetaTemplate):
         z_proto     = z_support.view(self.n_way, self.n_support, -1 ).mean(1) #the shape of z is [n_data, n_dim]
         z_query     = z_query.contiguous().view(self.n_way* self.n_query, -1 )
 
+
+        #change distance here
         dists = euclidean_dist(z_query, z_proto)
         scores = -dists
         return scores
@@ -47,3 +49,49 @@ def euclidean_dist( x, y):
     y = y.unsqueeze(0).expand(n, m, d)
 
     return torch.pow(x - y, 2).sum(2)
+
+def euclidean_dist_correct(x, y):
+    # x: N x D
+    # y: M x D
+    n = x.size(0)
+    m = y.size(0)
+    d = x.size(1)
+    assert d == y.size(1)
+
+    x = x.unsqueeze(1).expand(n, m, d)
+    y = y.unsqueeze(0).expand(n, m, d)
+
+    return torch.sqrt(torch.pow(x - y, 2).sum(2))
+
+def manhattan_dist(x, y):
+    """
+    Compute the Manhattan (L1) distance between two sets of vectors x and y.
+    x: Tensor of shape (N, D), where N is the number of samples and D is the dimensionality.
+    y: Tensor of shape (M, D), where M is the number of samples and D is the dimensionality.
+    """
+    n = x.size(0)
+    m = y.size(0)
+    d = x.size(1)
+    assert d == y.size(1)
+
+    x = x.unsqueeze(1).expand(n, m, d)
+    y = y.unsqueeze(0).expand(n, m, d)
+
+    return torch.abs(x - y).sum(2)
+
+def linear_similarity(x, y):
+    # x: N x D
+    # y: M x D
+    n = x.size(0)
+    m = y.size(0)
+    d = x.size(1)
+    assert d == y.size(1)
+
+    x = x.unsqueeze(1).expand(n, m, d)
+    y = y.unsqueeze(0).expand(n, m, d)
+
+    return torch.matmul(x,y)
+
+
+
+

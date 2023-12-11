@@ -11,13 +11,9 @@ class MapCell(MetaTemplate):
         super(MapCell, self).__init__(backbone, n_way, n_support)
 
         print("model - self:", self.feature)
-
-        self.classifier = nn.Linear(self.feat_dim, n_way)
         self.loss_fn = nn.CrossEntropyLoss()
 
         # Create Siamese subnetworks
-
-        # print("self.feat_dim",self.feat_dim)
 
         self.subnetwork1 = self.create_subnetwork(self.feat_dim)
         self.subnetwork2 = self.create_subnetwork(self.feat_dim)
@@ -50,30 +46,33 @@ class MapCell(MetaTemplate):
         )
         return model
 
-    def correct(self, x):
-        scores = self.subnetwork1(x)
-        print("scores: ", scores)
-        y_query = np.repeat(range(self.n_way), self.n_query)
-        print(y_query)
+    # def correct(self, x):
+    #     print("correct ")
+    #     scores = self.set_forward(x)
+    #     print("scores: ", scores)
+    #     y_query = np.repeat(range(self.n_way), self.n_query)
+    #     print("y_query", y_query)
 
-        topk_scores, topk_labels = scores.data.topk(1, 1, True, True)
-        topk_ind = topk_labels.cpu().numpy()
-        top1_correct = np.sum(topk_ind[:, 0] == y_query)
-        return float(top1_correct), len(y_query)
+    #     topk_scores, topk_labels = scores.data.topk(1, 1, True, True)
+    #     topk_ind = topk_labels.cpu().numpy()
+    #     top1_correct = np.sum(topk_ind[:, 0] == y_query)
+    #     return float(top1_correct), len(y_query)
 
     def set_forward_snn_loss(self, x, labels, is_feature=False):
         print("set_forward_snn_loss(self, x, labels, is_feature=False)")
 
-        x[0] = x[0].mean(1)  # the shape of z is [n_data, n_dim]
-        x[1] = x[1].mean(1)  # the shape of z is [n_data, n_dim]
-        # z_query = z_query.contiguous().view(self.n_way * self.n_query, -1)
+        # x[0] = x[0].mean(1)  # the shape of z is [n_data, n_dim]
+        # x[1] = x[1].mean(1)  # the shape of z is [n_data, n_dim]
 
         euclidean_dist_embeddings = self.set_forward_snn(x)
         print("labels", labels)
+        print("euclidean_dist before", euclidean_dist_embeddings)
 
+        euclidean_dist_embeddings = euclidean_dist_embeddings.mean(1)
+
+        print("euclidean_dist after", euclidean_dist_embeddings)
         # parameter of the loss to experiment with
         margin = 1
-        print(self.device)
 
         labels = torch.tensor(labels)
         labels = labels.to(self.device)
@@ -85,12 +84,6 @@ class MapCell(MetaTemplate):
         # print(euclidean_dist_embeddings)
 
         margin_vector = torch.full(euclidean_dist_embeddings.size(), margin).to(self.device)
-        # print(margin_vector.shape)
-
-        # print(margin_vector.dtype)
-        # print(labels.dtype)
-        # print(one_vector.dtype)
-        # print(euclidean_dist_embeddings.dtype)
         first_term = torch.matmul(one_vector.float()-labels.float(),euclidean_dist_embeddings**2)*0.5
 
         second_term = 0.5*torch.maximum(torch.tensor(0),margin_vector-euclidean_dist_embeddings)**2
@@ -118,37 +111,50 @@ class MapCell(MetaTemplate):
 
         print("output1", output1.size())
         print("output1", output2.size())
-        #euclidean_dist_embeddings = torch.cdist(output1,output2,p=2)
-        euclidean_dist_embeddings = (output1-output2).pow(2).sum(1).sqrt()
+        euclidean_dist_embeddings = torch.cdist(output1,output2,p=2)
+        #euclidean_dist_embeddings = (output1-output2).pow(2).sum(1).sqrt()
 
         print("euclidean_dist_embeddings", euclidean_dist_embeddings.size())
         return euclidean_dist_embeddings
 
-    def set_forward(self, query_pair, is_feature=False):
+    def set_forward(self, x, is_feature=False):
         print("set_forward(self, query_pair, is_feature=False)")
-        print("query_pair")
-        print(query_pair[0].size())
-    
+
+        z_support, z_query = self.parse_feature(x, is_feature)
+ 
+        z_support = z_support.contiguous()
+        z_proto = z_support.view(self.n_way, self.n_support, -1).mean(1)  # the shape of z is [n_data, n_dim]
+        z_query = z_query.contiguous().view(self.n_way * self.n_query, -1)
+        
         # query_pair[0] = query_pair[0].contiguous().view(self.n_way * self.n_query, -1)
         # query_pair[1] = query_pair[1].contiguous().view(self.n_way * self.n_query, -1)
 
         # TODO: update - 
-        # z_proto = z_support.view(self.n_way, self.n_support, -1).mean(1)  # the shape of z is [n_data, n_dim]
-        # z_query = z_query.contiguous().view(self.n_way * self.n_query, -1)
-        print("query_pair after")
-        print(query_pair[0].size())
+        # print("query_pair after")
+        # print(query_pair[0].size())
 
-        # TODO: eigene forward function die nur ein subnetzwerk benutzt?
-        dists = self.set_forward_snn(query_pair)
+        dists = self.set_forward_snn([z_query, z_proto])
         scores = -dists
+
         return scores
     
     def set_forward_loss(self, x, y):
+        """
         print("set_forward_loss(self, x)")
-        # y_query = torch.from_numpy(np.repeat(range( self.n_way ), self.n_query ))
-        # y_query = Variable(y_query.cuda())
+        print(x.size())
+        print(x)
+        print("-----hi-----")
+        print(y)
+        print("y", y.size())
+        y = torch.mean(y.float(), dim=1)
+        y_query = torch.from_numpy(np.repeat(y.numpy(), self.n_query))
+        y_query = y_query.long().cuda()
+        print(y_query)
+        y_query = Variable(y_query.cuda())
+        y_query = y_query.long().cuda()  # Convert to LongTensor and move to GPU
 
-        print("x", x[0].size())
+
+        print("y", y_query.size())
         scores = self.set_forward(x)
 
         # print("self.loss_fn(scores, y_query )")
@@ -156,7 +162,41 @@ class MapCell(MetaTemplate):
         print(scores.size())
         # print("y_query", y_query)
 
-        return self.loss_fn(scores, y.to(self.device))
+        #softmax = torch.nn.Softmax(dim=-1)
+        #y_pred = softmax(scores)
+
+        #softmax = torch.nn.Softmax(dim=0)
+        #y_pred = scores.mean()
+        print("y_pred", y_query.dtype)
+        print("y_query", scores.dtype)
+
+        return self.loss_fn(scores, y_query)
+        
+        print("set_forward_loss(self, x)")
+        """
+
+        # Extract the first column as class indices (assuming each row has identical class indices)
+        y_indices = y[:, 0]
+        print("y_indices shape:", y_indices.shape)
+
+        #y_query = y_indices.repeat_interleave(self.n_query)
+        y_query = torch.from_numpy(np.repeat(y_indices.numpy(), self.n_query))
+
+        # Ensure y_query is a LongTensor (required by nn.CrossEntropyLoss)
+        y_query = Variable(y_query.long().cuda())
+
+        # Generate scores using the forward pass of the model
+        scores = self.set_forward(x)
+
+        # Optional: Print shapes for debugging
+        print("Scores shape:", scores.shape)
+        print("y_query shape:", y_query.shape)
+        print("y_query min, max:", y_query.min().item(), y_query.max().item())  # Should be within [0, n_classes-1]
+
+
+        # Compute loss
+        loss = self.loss_fn(scores, y_query)
+        return loss
 
 
     def train_loop(self, epoch, train_loader, optimizer):
@@ -174,30 +214,36 @@ class MapCell(MetaTemplate):
                 if self.change_way:
                     self.n_way = x.size(0)
 
-            # idea - split the data into support and query to "pretrain" siamese
+            # idea - split the data to "pretrain" siamese
 
-            # print("x")
-            # print(x)
-            # print(x.size())
+            print("x")
+            print(x)
+            print(x.size())
 
-            # print("y")
-            # print(y)
-            # print(y.size())
+            print("y")
+            print(y)
+            print(y.size())
+            print("sind here")
 
             data, labels = self.preprocess_siamese_data(x, y)
-            support, query = data
-            support_labels, query_labels = labels
+            snn_train, snn_test = data
+            snn_train_labels, snn_test_labels = labels
+            print(len(snn_train))
+            print(len(snn_train_labels))
+            #print(snn_train_labels.shape)
+            #print(snn_test_labels.shape)
+            
             
             self.optimizer_snn.zero_grad()
-            print("support", support[0].size())
-            loss_snn = self.set_forward_snn_loss(support, support_labels)
+            #print("support", support[0].size())
+            loss_snn = self.set_forward_snn_loss(snn_train, snn_train_labels)
             loss_snn.backward(retain_graph=True)
             self.optimizer_snn.step()
 
             optimizer.zero_grad()
-            print("query before set_forward_loss()", query[0].size())
+            print("SECOND LOSS")
 
-            loss = self.set_forward_loss(query, query_labels)
+            loss = self.set_forward_loss(snn_test, snn_test_labels)
             loss.backward()
             optimizer.step()
             
@@ -226,19 +272,19 @@ class MapCell(MetaTemplate):
                     self.n_way = x.size(0)
         
             # Split data into pairs
-            #data = self.split_data_into_pairs_test(x)
+            # #data = self.split_data_into_pairs_test(x)
             data = x
-            if isinstance(data, list):
-                data = [Variable(obj.to(self.device)) for obj in data]
-            else: 
-                data = Variable(data.to(self.device))
+            # if isinstance(data, list):
+            #     data = [Variable(obj.to(self.device)) for obj in data]
+            # else: 
+            #     data = Variable(data.to(self.device))
 
-            print("data before ", data.size())
+            # print("data before ", data.size())
 
-            if isinstance(data, list):
-                data = [obj.contiguous().view(self.n_way * (self.n_support + self.n_query), *obj.size()[2:]) for obj in data]
-            else: data = data.contiguous().view(self.n_way * (self.n_support + self.n_query), *data.size()[2:])
-            data = self.feature.forward(data)
+            # if isinstance(data, list):
+            #     data = [obj.contiguous().view(self.n_way * (self.n_support + self.n_query), *obj.size()[2:]) for obj in data]
+            # else: data = data.contiguous().view(self.n_way * (self.n_support + self.n_query), *data.size()[2:])
+            #data = self.feature.forward(data)
 
             correct_this, count_this = self.correct(data)
             acc_all.append(correct_this / count_this * 100)
@@ -259,6 +305,8 @@ class MapCell(MetaTemplate):
         support for training siamese, query for validation
         """
 
+        query, query_labels = data, labels
+
         # TODO: support query split based on features? Was genau haben wir hier, wieso preprocessing notwendig? Von meta_template...
         if isinstance(data, list):
             data = [Variable(obj.to(self.device)) for obj in data]
@@ -276,6 +324,7 @@ class MapCell(MetaTemplate):
         z_all = z_all.view(self.n_way, self.n_support + self.n_query, -1)
 
         #z_all = data
+        # TODO; smarter split: wie n_support umgehen?
 
         print("data ", data.size())
         print("z_all ", z_all.size())
@@ -290,30 +339,7 @@ class MapCell(MetaTemplate):
         # vergleichen mit protos - protos müssen erstellt werden
         # paare nicht so wie support erstellen
 
-        support = []
-        query = []
-
-        for i in range(2):
-            if i==0:
-                data = z_support
-                labels = z_s_labels
-            else :
-                data = z_query
-                labels = z_q_labels
-            
-            # print("INPUT to self.split_data_into_pairs(data, labels):")
-            # print(data)
-            # print(data.size())
-            # print(labels.size())
-
-            pairs, pairLabels = self.split_data_into_pairs(data, labels)
-
-            if i==0:
-                support = pairs
-                support_labels = pairLabels
-            else :
-                query = pairs
-                query_labels = pairLabels
+        support, support_labels = self.split_data_into_pairs(z_support, z_s_labels)
 
         pairs, pairLabels = [support, query], [support_labels, query_labels]
 
