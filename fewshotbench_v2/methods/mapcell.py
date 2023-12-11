@@ -283,6 +283,10 @@ class MapCell(MetaTemplate):
         z_s_labels = labels[:, :self.n_support]
         z_q_labels = labels[:, self.n_support:]
 
+        # TODO: query sollte nur query sein und labels
+        # vergleichen mit protos - protos müssen erstellt werden
+        # paare nicht so wie support erstellen
+
         support = []
         query = []
 
