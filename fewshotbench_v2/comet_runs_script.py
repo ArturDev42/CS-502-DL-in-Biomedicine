@@ -4,7 +4,7 @@ import subprocess
 yaml_path = 'conf/main.yaml'
 
 
-iter_nums = [30, 60, 90]
+iter_nums = [15, 30, 60, 90, 600]
 learning_rates = [0.0001, 0.001, 0.01, 0.1]
 #add more hypers
 methods = ["comet"]
@@ -14,10 +14,15 @@ datasets = ["tabula_muris", "swissprot"]
 command = f'sudo /home/tim.wiebelhaus18/miniconda3/envs/fewshotbench/bin/python comet_changes_script.py comet=true'
 subprocess.run(command, shell=True)
 
+# Further hyperparameter tuning not included in loops
 # For comparison
+
 #config['n_way'] = 1
 #config['n_shot'] = 1
 #config['n_query'] = 3
+
+# distance #1
+# distance #2
 
 run_num = 0
 for method in methods:

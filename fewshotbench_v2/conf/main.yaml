@@ -11,13 +11,13 @@ exp:
   save_freq: 10
   seed: 42
   val_freq: 1
-iter_num: 30
-lr: 0.01
+iter_num: 600
+lr: 0.001
 mode: train
-model: EnFCNet
-n_query: ???
-n_shot: ???
-n_way: ???
+model: FCNet
+n_query: 15
+n_shot: 1
+n_way: 5
 optimizer: Adam
 optimizer_cls:
   _target_: torch.optim.${optimizer}
