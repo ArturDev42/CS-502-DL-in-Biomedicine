@@ -12,6 +12,6 @@ cls:
   n_classes: ${train_classes}
   loss: softmax
 
-stop_epoch: 5
+stop_epoch: 40
 train_batch: 16
 

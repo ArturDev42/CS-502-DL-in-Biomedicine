@@ -34,6 +34,10 @@ def initialize_dataset_model(cfg):
     else:
         backbone = instantiate(cfg.backbone, x_dim=train_dataset.dim)
 
+
+    # if cfg.method.name == 'comet':
+    #     model = instantiate()
+    # else:
     # Instantiate few-shot method class
     model = instantiate(cfg.method.cls, backbone=backbone)
 

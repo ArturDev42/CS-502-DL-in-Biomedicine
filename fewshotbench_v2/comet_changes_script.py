@@ -16,19 +16,16 @@ def modify_file(file_path, modifications):
 def modify_configurations(comet):
     # Define the modifications for each file
     tabula_muris_modifications = [
-        (r'^( *)#(_target_: backbones.fcnet.EnFCNet)$', r'\1\2') if comet else (r'^( *)(_target_: backbones.fcnet.EnFCNet)$', r'\1#\2'),
-        (r'^( *)(_target_: backbones.fcnet.FCNet)$', r'\1#\2') if comet else (r'^( *)#(_target_: backbones.fcnet.FCNet)$', r'\1\2'),
-        (r'^( *)(layer_dim: \[ 64, 64 \])$', r'\1#\2') if comet else (r'^( *)#(layer_dim: \[ 64, 64 \])$', r'\1\2')
+        (r'^( *)(_target_: backbones.fcnet.EnFCNet)$', r'\1\2') if comet else (r'^( *)#(_target_: backbones.fcnet.FCNet)$', r'\1#\2')
     ]
 
     main_modifications = [
-        (r'^( *)#(model: EnFCNet)$', r'\1\2') if comet else (r'^( *)(model: EnFCNet)$', r'\1#\2'),
-        (r'^( *)(model: FCNet)$', r'\1#\2') if comet else (r'^( *)#(model: FCNet)$', r'\1\2')
+        (r'^( *)(model: EnFCNet)$', r'\1\2') if comet else (r'^( *)#(model: FCNet)$', r'\1#\2')
     ]
 
     tabula_muris_py_modifications = [
-        (r'^( *)#(go2gene = get_go2gene.*)$', r'\1\2') if comet else (r'^( *)(go2gene = get_go2gene.*)$', r'\1#\2'),
-        (r'^( *)#(go_mask = create_go_mask.*)$', r'\1\2') if comet else (r'^( *)(go_mask = create_go_mask.*)$', r'\1#\2')
+        (r'^( *)(go2gene = get_go2gene.*)$', r'\1\2') if comet else (r'^( *)#(go2gene = get_go2gene.*)$', r'\1#\2'),
+        (r'^( *)(go_mask = create_go_mask.*)$', r'\1\2') if comet else (r'^( *)#(go_mask = create_go_mask.*)$', r'\1#\2')
     ]
 
     # Modify the files

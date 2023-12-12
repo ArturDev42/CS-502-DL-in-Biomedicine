@@ -9,14 +9,15 @@ from backbones.blocks import distLinear
 from methods.meta_template import MetaTemplate
 
 
-class MapCell_new(MetaTemplate):
+class MapCell_v2(MetaTemplate):
 
     def __init__(self, backbone, n_way, n_support, n_classes=1, loss='softmax', type='classification'):
-        super(MapCell_new, self).__init__(backbone, n_way, n_support, change_way=True)
+        super(MapCell_v2, self).__init__(backbone, n_way, n_support, change_way=True)
         self.feature = backbone
         self.type = type
         self.n_classes = n_classes
 
+        # Classifier setup based on the loss type - needed?
         if loss == 'softmax':
             self.classifier = nn.Linear(self.feature.final_feat_dim, n_classes)
             self.classifier.bias.data.fill_(0)
@@ -39,7 +40,6 @@ class MapCell_new(MetaTemplate):
         self.loss_fn = nn.CrossEntropyLoss()
 
         # Create Siamese subnetworks
-
         self.subnetwork1 = self.create_subnetwork(self.feat_dim)
         self.subnetwork2 = self.create_subnetwork(self.feat_dim)
 
@@ -72,23 +72,25 @@ class MapCell_new(MetaTemplate):
 
         return model
 
+    # gets data and forwards it through the whole network
     def forward(self, x):
         if isinstance(x, list):
             x = [Variable(obj.cuda()) for obj in x]
         else:
             x = Variable(x.cuda())
 
-        out = self.feature.forward(x)
-        out = self.subnetwork1(out)
+        out = self.subnetwork1(x)
+
         # dists = self.set_forward_snn(out)
-        # scores = -dists
-        if self.classifier != None:
-            scores = self.classifier.forward(out)
+        scores = -out
+
+        # if self.classifier != None:
+        #     scores = self.classifier.forward(out)
         return scores
 
+    # normal loss - expected y versus scores
     def set_forward_loss(self, x, y):
         scores = self.forward(x)
-        #print(scores.shape)
         if self.type == 'classification':
             y = y.long().cuda()
         else:
@@ -96,16 +98,16 @@ class MapCell_new(MetaTemplate):
 
         return self.loss_fn(scores, y)
 
+    # TODO: pairwise? Then not mean?
     def set_forward_snn_loss(self, x, labels, is_feature=False):
-        #print("set_forward_snn_loss(self, x, labels, is_feature=False)")
-        x[0] = self.feature.forward(x[0].to(self.device))
-        x[1] = self.feature.forward(x[1].to(self.device))
 
+        # TODO: comparison, do we have reference here?
+        # for pair0, pair1, label in zip(snn_train[0], snn_train[1], snn_train_labels):
         euclidean_dist_embeddings = self.set_forward_snn(x)
-        # print("labels", labels)
-        # print("euclidean_dist before", euclidean_dist_embeddings)
+        #print("euclidean_dist before", euclidean_dist_embeddings)
 
-        euclidean_dist_embeddings = euclidean_dist_embeddings.mean(1)
+        # TODO: mean dimension?
+        euclidean_dist_embeddings = euclidean_dist_embeddings.mean(0)
 
         #print("euclidean_dist after", euclidean_dist_embeddings)
         # parameter of the loss to experiment with
@@ -122,34 +124,27 @@ class MapCell_new(MetaTemplate):
 
         margin_vector = torch.full(euclidean_dist_embeddings.size(), margin).to(self.device)
         first_term = torch.matmul(one_vector.float()-labels.float(),euclidean_dist_embeddings**2)*0.5
+        # first_term = 1-labels.float()*euclidean_dist_embeddings**2*0.5
 
         second_term = 0.5*torch.maximum(torch.tensor(0),margin_vector-euclidean_dist_embeddings)**2
         contrastive_loss = first_term + second_term
-        #print("contrastive_loss", contrastive_loss.size())
         return contrastive_loss.mean()
 
+    # forward siamese - for training of the network
     def set_forward_snn(self, x):
-        #print("set_forward_snn(self, x)")
-
         """
-        x[0]:
-        [tensor([-0.4559,  1.7199, -0.3444, -0.1739, -0.2226], device='cuda:0'),
-         tensor([ 0.9357,  1.1822, -0.3444, -0.1739, -0.2226], device='cuda:0')]
-        
-        x[1]:
-        [tensor([-0.4559,  1.7199, -0.3444, -0.1739, -0.2226], device='cuda:0'), 
-        tensor([ 0.5071, -0.4544, -0.3293, -0.1739, -0.2226], device='cuda:0')]
+        ADD COMMENTS
         """
 
         output1 = self.subnetwork1(x[0])
         output2 = self.subnetwork2(x[1])
 
-        # print("output1", output1.size())
-        # print("output1", output2.size())
-        euclidean_dist_embeddings = torch.cdist(output1,output2,p=2)
-        #euclidean_dist_embeddings = (output1-output2).pow(2).sum(1).sqrt()
+        output1, output2
 
-        #print("euclidean_dist_embeddings", euclidean_dist_embeddings.size())
+        # TODO: maybe output = self.siamese?
+        euclidean_dist_embeddings = torch.cdist(output1,output2,p=2)
+        #euclidean_dist_embeddings = (output1-output2).pow(2).sum().sqrt()
+
         return euclidean_dist_embeddings
 
     def train_loop(self, epoch, train_loader, optimizer):
@@ -157,10 +152,19 @@ class MapCell_new(MetaTemplate):
         avg_loss = 0
 
         for i, (x, y) in enumerate(train_loader):
-
             data, labels = self.preprocess_siamese_data(x, y)
             snn_train, snn_test = data
             snn_train_labels, snn_test_labels = labels
+
+            snn_train[0] = self.feature.forward(snn_train[0].to(self.device))
+            snn_train[1] = self.feature.forward(snn_train[1].to(self.device))
+
+            # for pair0, pair1, label in zip(snn_train[0], snn_train[1], snn_train_labels):
+
+            #     self.optimizer_snn.zero_grad()
+            #     loss_snn = self.set_forward_snn_loss([pair0, pair1], label)
+            #     loss_snn.backward(retain_graph=True)
+            #     self.optimizer_snn.step()
 
             self.optimizer_snn.zero_grad()
             loss_snn = self.set_forward_snn_loss(snn_train, snn_train_labels)
@@ -169,6 +173,7 @@ class MapCell_new(MetaTemplate):
 
             optimizer.zero_grad()
 
+            snn_test = self.feature.forward(snn_test.to(self.device))
             loss = self.set_forward_loss(snn_test, snn_test_labels)
 
             # if self.change_way:
@@ -199,7 +204,7 @@ class MapCell_new(MetaTemplate):
 
             if self.type == "classification":
                 correct_this, count_this = self.correct(x)
-                print("correct:", correct_this)
+                print("correct", correct_this)
                 acc_all.append(correct_this / count_this * 100)
             else:
                 # Use pearson correlation
@@ -219,6 +224,23 @@ class MapCell_new(MetaTemplate):
             return acc_mean, acc_std
         else:
             return acc_mean
+    
+    def train_siamese_network(self, z_support, y_support):
+        batch_size = 4
+        support_size = self.n_way * self.n_support
+
+        for epoch in range(100):
+            rand_id = np.random.permutation(support_size)
+            for i in range(0, support_size, batch_size):
+                self.optimizer_snn.zero_grad()
+                selected_id = torch.from_numpy(rand_id[i: min(i + batch_size, support_size)]).cuda()
+                z_batch = z_support[selected_id]
+                y_batch = y_support[selected_id]
+                y_batch = y_batch.cpu().data.numpy()
+                z_batch, y_batch = self.split_data_into_pairs(z_batch, y_batch)
+                loss = self.set_forward_snn_loss(z_batch, y_batch)
+                loss.backward()
+                self.optimizer_snn.step()
 
     def set_forward(self, x, y=None):
         z_support, z_query = self.parse_feature(x, is_feature=False)
@@ -236,6 +258,7 @@ class MapCell_new(MetaTemplate):
             y_support = y_support.contiguous().view(self.n_way * self.n_support, -1).to(self.device)
             # y_support = y_support.contiguous().view(self.n_way * y.size(1), -1)
 
+        self.train_siamese_network(z_support, y_support)
         # if self.loss_type == 'softmax':
         #     linear_clf = nn.Linear(self.feat_dim, self.n_way)
         # elif self.loss_type == 'dist':
@@ -243,38 +266,37 @@ class MapCell_new(MetaTemplate):
         # else:
         #     raise ValueError('Loss type not supported')
 
-        # linear_clf = linear_clf.to(self.device)
+        #linear_clf = linear_clf.to(self.device)
 
-        # set_optimizer = torch.optim.SGD(linear_clf.parameters(), lr=0.01, momentum=0.9, dampening=0.9,
-        #                                 weight_decay=0.001)
+        # TODO: macht das sinn? was ist unser model?
+        set_optimizer = torch.optim.SGD(self.siamese_model.parameters(), lr=0.01, momentum=0.9, dampening=0.9,
+                                        weight_decay=0.001)
 
-        # loss_function = self.loss_fn.to(self.device)
+        loss_function = self.loss_fn.to(self.device)
 
-        # batch_size = 4
-        # support_size = self.n_way * self.n_support
-        # for epoch in range(100):
-        #     rand_id = np.random.permutation(support_size)
-        #     for i in range(0, support_size, batch_size):
-        #         set_optimizer.zero_grad()
-        #         selected_id = torch.from_numpy(rand_id[i: min(i + batch_size, support_size)]).cuda()
-        #         z_batch = z_support[selected_id]
-        #         y_batch = y_support[selected_id]
-        #         # TODO: y through network
-        #         with torch.no_grad():
-        #             scores = self.subnetwork1(z_batch)
-        #         scores = linear_clf(scores)
-        #         loss = loss_function(scores, y_batch)
-        #         # loss.backward(retain_graph=True)
-        #         loss.backward()
-        #         set_optimizer.step()
+        batch_size = 4
+        support_size = self.n_way * self.n_support
+        for epoch in range(100):
+            rand_id = np.random.permutation(support_size)
+            for i in range(0, support_size, batch_size):
+                set_optimizer.zero_grad()
+                selected_id = torch.from_numpy(rand_id[i: min(i + batch_size, support_size)]).cuda()
+                z_batch = z_support[selected_id]
+                y_batch = y_support[selected_id]
+                #with torch.no_grad():
+                #loss = self.set_forward_loss([z_batch, z_proto[selected_id]], y_batch)
+                loss = self.set_forward_loss(z_batch, y_batch)
+                #loss = loss_function(-scores, y_batch)
+                # loss.backward(retain_graph=True)
+                loss.backward()
+                set_optimizer.step()
 
         dists = self.set_forward_snn([z_query, z_proto])
-        print("dists:", dists)
-        # scores = linear_clf(-dists)
         scores = -dists
-        print("scores:", scores)
         return scores
-
+# NOTES:
+# freeze feature extractor
+# 
     def preprocess_siamese_data(self, data, labels):
             """
             Preprocess data and labels for Siamese Neural Network training.
@@ -283,18 +305,13 @@ class MapCell_new(MetaTemplate):
 
             query, query_labels = data.to(self.device), labels.to(self.device)
 
-            # TODO: support query split based on features? Was genau haben wir hier, wieso preprocessing notwendig? Von meta_template...
             if isinstance(data, list):
                 data = [Variable(obj.to(self.device)) for obj in data]
             else: 
                 data = Variable(data.to(self.device))
 
-            #print("data before ", data.size())
-
             z_all = data
             # TODO; smarter split: wie n_support umgehen?
-
-            # print("data ", data.size())
             # print("z_all ", z_all.size())
 
             z_support = z_all[:self.n_support]
@@ -313,13 +330,13 @@ class MapCell_new(MetaTemplate):
 
             return pairs, pairLabels
 
+    # TODO: immediately use support query
+    # episodic pretraining
     def split_data_into_pairs(self, data, labels):
         """
-        Preprocess data and labels for Siamese Neural Network training.
-        support for training siamese, query for validation
-
+        Split data into pairs according to their labels for input of the Siamese Neural Network training.
         """
-        #print("split_data_into_pairs(self, data, labels")
+
         pairs, pairLabels = [], []
         classes = np.unique(labels, axis=0)
         pair_snn_01, pair_snn_02 = [], []
@@ -336,16 +353,22 @@ class MapCell_new(MetaTemplate):
             pairLabels.append(1)
 
             negIdx = np.where(labels != label)[0]
+            # Case when our batch only contains the same class data
             if(negIdx.size != 0):
                 negSample = data[np.random.choice(negIdx)]
                 # prepare a negative pair of samples and update our lists
                 pair_snn_01.append(sample)
                 pair_snn_02.append(negSample)
                 pairLabels.append(0)
-
-            #print("sample shape", sample.size())
+            else:
+                # TODO: does not make sense but 1 case
+                pair_snn_01.append(sample)
+                pair_snn_02.append(sample)
+                pairLabels.append(1)
 
         pairs.append(torch.stack(pair_snn_01))
         pairs.append(torch.stack(pair_snn_02))
 
         return pairs, torch.tensor(pairLabels)
+
+        # explaining why episodic / pretraining works better - that is why we use it

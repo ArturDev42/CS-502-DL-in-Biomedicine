@@ -1,7 +1,7 @@
 defaults:
-  - baseline
+  - meta_base
 
 cls:
-  _target_: methods.mapcell_v2.MapCell_new
+  _target_: methods.mapcell_v2.MapCell_v2
 
 name: mapcell_v2

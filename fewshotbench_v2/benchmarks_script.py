@@ -15,6 +15,18 @@ with open(yaml_path, 'r') as file:
 config['iter_num'] = 600
 config['lr'] = 0.001
 
+
+# from the output we can see that by default these values are used
+# although not explicitly set in the config (???)
+# n_way: 5
+# n_shot: 5
+# n_query: 15
+
+# as a comparison
+#config['n_way'] = 1
+#config['n_shot'] = 1
+#config['n_query'] = 3
+
 with open(yaml_path, 'w') as file:
     yaml.dump(config, file)
 

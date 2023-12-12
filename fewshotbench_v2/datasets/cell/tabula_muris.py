@@ -56,8 +56,8 @@ class TMDataset(FewShotDataset, ABC):
         samples = adata.to_df().to_numpy(dtype=np.float32)
         # convert label to torch tensor y
         targets = adata.obs['label'].cat.codes.to_numpy(dtype=np.int32)
-        #go2gene = get_go2gene(adata=adata, GO_min_genes=32, GO_max_genes=None, GO_min_level=6, GO_max_level=1)
-        #go_mask = create_go_mask(adata, go2gene)
+        go2gene = get_go2gene(adata=adata, GO_min_genes=32, GO_max_genes=None, GO_min_level=6, GO_max_level=1)
+        go_mask = create_go_mask(adata, go2gene)
         return samples, targets
 
 

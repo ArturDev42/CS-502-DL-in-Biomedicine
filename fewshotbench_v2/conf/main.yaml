@@ -11,10 +11,10 @@ exp:
   save_freq: 10
   seed: 42
   val_freq: 1
-iter_num: 10
-lr: 0.001
+iter_num: 30
+lr: 0.01
 mode: train
-model: FCNet
+model: EnFCNet
 n_query: ???
 n_shot: ???
 n_way: ???
