@@ -11,7 +11,6 @@ import wandb
 class MapCell_v2(MetaTemplate):
     def __init__(self, backbone, n_way, n_support):
         super(MapCell_v2, self).__init__(backbone, n_way, n_support)
-        print("ProtoNet Backbone:", backbone)
         self.loss_fn = nn.CrossEntropyLoss()
 
         # Create Siamese subnetwork
@@ -56,35 +55,6 @@ class MapCell_v2(MetaTemplate):
 
         return scores
 
-    # train loop
-    def train_loop(self, epoch, train_loader, optimizer):
-        """
-        Function to train whole Model.
-        """
-        print_freq = 10
-
-        avg_loss = 0
-        for i, (x, y) in enumerate(train_loader):
-            if isinstance(x, list):
-                self.n_query = x[0].size(1) - self.n_support
-                if self.change_way:
-                    self.n_way = x[0].size(0)
-            else: 
-                self.n_query = x.size(1) - self.n_support
-                if self.change_way:
-                    self.n_way = x.size(0)
-            optimizer.zero_grad()
-            loss = self.set_forward_loss(x)
-            loss.backward()
-            optimizer.step()
-            avg_loss = avg_loss + loss.item()
-
-            if i % print_freq == 0:
-                # print(optimizer.state_dict()['param_groups'][0]['lr'])
-                print('Epoch {:d} | Batch {:d}/{:d} | Loss {:f}'.format(epoch, i, len(train_loader),
-                                                                        avg_loss / float(i + 1)))
-                wandb.log({"loss": avg_loss / float(i + 1)})
-
     def set_forward_loss(self, x):
         """
         Function to compute the overall forward loss.
@@ -94,36 +64,30 @@ class MapCell_v2(MetaTemplate):
 
         scores = self.set_forward(x)
 
-        print("y_query", y_query)
-        print("scores", scores)
-        print("y_query", y_query.size())
-        print("scores", scores.size())
-
-        labels = torch.zeros(self.n_query * self.n_way, dtype=torch.float32).cuda()
-
-        for i in range(self.n_way):
-            labels[i * self.n_query : (i + 1) * n_query] = i
-
+        labels = torch.nn.functional.one_hot(y_query.to(torch.int64), num_classes=self.n_way)
         labels = Variable(labels)
 
-        print("labels", labels)
-        print("labels", labels.size())
-
         # parameter of the loss to experiment with
-        margin = 0.5
+        margin = 1.0
 
         first_term = ((1.0-labels.float())*scores**2)*0.5
 
         second_term = 0.5*torch.maximum(torch.tensor(0.0),margin-scores)**2
         contrastive_loss = (first_term + second_term).mean()
 
+        print("contrastive", contrastive_loss)
+
         loss_ce = self.loss_fn(scores, y_query)
 
-        alpha = 0.5  # Adjust the weight of each loss
-        total_loss = alpha * loss_ce + (1 - alpha) * loss_contrastive
+        print("loss_ce", loss_ce)
 
-        total_loss.backward()
-        self.optimizer_snn.step()
+        alpha = 0.5  # Adjust the weight of each loss
+        total_loss = alpha * loss_ce + (1 - alpha) * contrastive_loss
+
+        total_loss = contrastive_loss
+
+        # total_loss.backward(retain_graph=True)
+        # self.optimizer_snn.step()
 
         return total_loss
 

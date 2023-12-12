@@ -5,8 +5,8 @@ yaml_path = 'conf/main.yaml'
 
 
 #add more hypers
-datasets = ["swissprot", "tabula_muris"]
-methods = ["maml" , "protonet", "matchingnet", "baseline"]
+datasets = ["tabula_muris"]
+methods = ["maml"]
 
 #make sure original parameters are in:
 with open(yaml_path, 'r') as file:

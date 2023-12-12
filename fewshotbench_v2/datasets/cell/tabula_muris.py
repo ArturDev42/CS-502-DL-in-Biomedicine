@@ -58,13 +58,13 @@ class TMDataset(FewShotDataset, ABC):
         targets = adata.obs['label'].cat.codes.to_numpy(dtype=np.int32)
         go2gene = get_go2gene(adata=adata, GO_min_genes=32, GO_max_genes=None, GO_min_level=6, GO_max_level=1)
         go_mask = create_go_mask(adata, go2gene)
-        return samples, targets
+        return samples, targets, go_mask
 
 
 class TMSimpleDataset(TMDataset):
     def __init__(self, batch_size, root='./data/', mode='train', min_samples=20):
         self.initialize_data_dir(root, download_flag=True)
-        self.samples, self.targets = self.load_tabular_muris(mode, min_samples)
+        self.samples, self.targets, self.go_mask = self.load_tabular_muris(mode, min_samples)
         self.batch_size = batch_size
         super().__init__()
 
@@ -94,7 +94,7 @@ class TMSetDataset(TMDataset):
         self.n_episode = n_episode
         min_samples = n_support + n_query
 
-        samples_all, targets_all = self.load_tabular_muris(mode, min_samples)
+        samples_all, targets_all, go_masks_all = self.load_tabular_muris(mode, min_samples)
         self.categories = np.unique(targets_all)  # Unique cell labels
         self.x_dim = samples_all.shape[1]
 

@@ -35,6 +35,7 @@ class EnFCNet(nn.Module):
 
     def __init__(self, x_dim, go_mask, hid_dim=64, z_dim=64, dropout=0.2):
         super(EnFCNet, self).__init__()
+        print("INSIDE EnFCNet")
 
         # self.go_mask = generate_simple_go_mask(x_dim=x_dim, num_GOs=3) # for testing
         self.go_mask = go_mask

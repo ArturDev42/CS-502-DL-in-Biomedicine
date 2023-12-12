@@ -56,7 +56,6 @@ class MapCell(MetaTemplate):
 
         return scores
 
-    # intuitiv training
     def train_siamese_network(self, x, y):
         """
         Function for training the Siamese network. Creates pairs of samples and updates weights by minimizing contrastive loss.
@@ -65,8 +64,6 @@ class MapCell(MetaTemplate):
         freq = 10
 
         x, _ = self.parse_feature(x, is_feature=False)
-
-        print(x.size())
 
         y = y[:self.n_support].cpu().data.numpy()
         pairs, pair_labels = self.split_data_into_pairs(x, y)
@@ -88,47 +85,6 @@ class MapCell(MetaTemplate):
 
         return snn_loss.item()
 
-    def train_siamese_network_2(self, x, y=None):
-        """
-        Function to train Siamese Network with support/query couples.
-        """
-        self.subnetwork.train()
-        z_support, z_query = self.parse_feature(x, is_feature=False)
-
-        # Detach ensures we don't change the weights in main training process
-        z_support = z_support.contiguous().view(self.n_way * self.n_support, -1).detach().to(self.device)
-        z_query = z_query.contiguous().view(self.n_way * self.n_query, -1).detach().to(self.device)
-
-        z_proto = z_support.view(self.n_way, self.n_support, -1).mean(1)  # the shape of z is [n_data, n_dim]
-
-        if y is None:  # Classification
-            y_support = torch.from_numpy(np.repeat(range(self.n_way), self.n_support))
-            y_support = Variable(y_support.to(self.device))
-        else:  # Regression
-            y_support = y[:, :self.n_support]
-            y_support = y_support.contiguous().view(self.n_way * self.n_support, -1).to(self.device)
-    
-        y_query = torch.from_numpy(np.repeat(range( self.n_way ), self.n_query ))
-        y_query = Variable(y_query.cuda())
-
-        batch_size = 4
-        support_size = self.n_way * self.n_support
-        for epoch in range(10):
-            rand_id = np.random.permutation(support_size)
-            for i in range(0, support_size, batch_size):
-                self.optimizer_snn.zero_grad()
-                selected_id = torch.from_numpy(rand_id[i: min(i + batch_size, support_size)])
-                # z_batch_s = z_proto[selected_id]
-                # z_batch_q = z_query[selected_id]
-                z_batch_s = z_support[selected_id]
-                z_batch_q = z_query[selected_id]
-                #y_batch = y_query[selected_id]
-                y_batch = y_support[selected_id]
-                loss_snn = self.set_forward_snn_loss([z_batch_s, z_batch_q], y_batch)
-                # loss.backward(retain_graph=True)
-                loss_snn.backward()
-                self.optimizer_snn.step()
-
     # train loop
     def train_loop(self, epoch, train_loader, optimizer):
         """
@@ -146,7 +102,7 @@ class MapCell(MetaTemplate):
                 self.n_query = x.size(1) - self.n_support
                 if self.change_way:
                     self.n_way = x.size(0)
-            self.train_siamese_network_2(x.to(self.device))
+            self.train_siamese_network(x.to(self.device), y.to(self.device))
             optimizer.zero_grad()
             loss = self.set_forward_loss(x)
             loss.backward()
@@ -179,7 +135,7 @@ class MapCell(MetaTemplate):
         euclidean_dist_embeddings = self.set_forward_snn(x)
         
         # parameter of the loss to experiment with
-        margin = 0.5
+        margin = 1.0
 
         first_term = ((1.0-labels.float())*euclidean_dist_embeddings**2)*0.5
 

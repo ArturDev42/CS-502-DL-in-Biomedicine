@@ -11,12 +11,12 @@ exp:
   save_freq: 10
   seed: 42
   val_freq: 1
-iter_num: 600
+iter_num: 30
 lr: 0.001
 mode: train
 model: FCNet
 n_query: 15
-n_shot: 1
+n_shot: 5
 n_way: 5
 optimizer: Adam
 optimizer_cls:

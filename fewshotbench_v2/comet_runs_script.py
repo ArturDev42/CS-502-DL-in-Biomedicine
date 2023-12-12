@@ -4,8 +4,8 @@ import subprocess
 yaml_path = 'conf/main.yaml'
 
 
-iter_nums = [15, 30, 60, 90, 600]
-learning_rates = [0.0001, 0.001, 0.01, 0.1]
+iter_nums = [30, 90, 600]
+learning_rates = [0.001, 0.01, 0.1]
 #add more hypers
 methods = ["comet"]
 datasets = ["tabula_muris", "swissprot"]
