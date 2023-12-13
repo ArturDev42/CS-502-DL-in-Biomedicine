@@ -12,7 +12,7 @@ exp:
   seed: 42
   val_freq: 1
 iter_num: 600
-lr: 0.01
+lr: 0.001
 mode: train
 model: EnFCNet
 n_query: 15

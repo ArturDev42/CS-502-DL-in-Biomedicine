@@ -23,7 +23,7 @@ class COMET(MetaTemplate):
 
 
         #change distance here
-        dists = manhattan_dist(z_query, z_proto)
+        dists = euclidean_dist(z_query, z_proto)
         scores = -dists
         return scores
 
