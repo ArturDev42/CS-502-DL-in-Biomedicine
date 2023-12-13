@@ -32,7 +32,9 @@ def initialize_dataset_model(cfg):
     if cfg.method.fast_weight:
         backbone = instantiate(cfg.backbone, x_dim=train_dataset.dim, fast_weight=True)
     elif cfg.method.name == "comet":
-        backbone = instantiate(cfg.backbone, x_dim=train_dataset.dim, go_mask=train_dataset.get_mask)
+        backbone = instantiate(cfg.backbone, x_dim=train_dataset.dim, go_mask=train_dataset.get_mask())
+    elif cfg.method.name == "mapcell":
+        backbone = instantiate(cfg.backbone, x_dim=train_dataset.dim, go_mask=train_dataset.get_mask())
     else:
         backbone = instantiate(cfg.backbone, x_dim=train_dataset.dim)
 

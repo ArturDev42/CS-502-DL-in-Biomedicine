@@ -64,6 +64,10 @@ class MapCell(MetaTemplate):
 
         x, _ = self.parse_feature(x, is_feature=False)
 
+        print("after parse")
+        print(x)
+        print(x.size())
+
         y = y[:self.n_support].cpu().data.numpy()
         pairs, pair_labels = self.split_data_into_pairs_supp(x, y)
 
@@ -76,6 +80,11 @@ class MapCell(MetaTemplate):
         # Forward pass for Siamese network training
         i = 1
         for pair0, pair1, label in zip(pairs[0], pairs[1], pair_labels):
+            pair0 = pair0.reshape(1, -1)
+            pair1 = pair1.reshape(1, -1)
+            print("pair")
+            print(pair0)
+            print(pair0.size())
             snn_loss = self.set_forward_snn_loss([pair0, pair1], label)
             if i % freq == 0:
                 snn_loss.backward()
@@ -93,6 +102,8 @@ class MapCell(MetaTemplate):
 
         avg_loss = 0
         for i, (x, y) in enumerate(train_loader):
+            print("x", x)
+            print("shape", x.size())
             if isinstance(x, list):
                 self.n_query = x[0].size(1) - self.n_support
                 if self.change_way:
@@ -148,10 +159,11 @@ class MapCell(MetaTemplate):
         """
         Function to set forward pass through the Siamese network.
         """
+        # print("snn")
+        # print(x)
+        # print(x.size())
 
         output1, output2 = self.subnetwork(x[0]), self.subnetwork(x[1])
-        print("output", output1)
-        print("output", output1.size())
         euclidean_dist_embeddings = euclidean_dist(output1,output2)
 
         return euclidean_dist_embeddings
@@ -201,10 +213,6 @@ class MapCell(MetaTemplate):
             classes = np.unique(labels, axis=0)
             pair_snn_01, pair_snn_02 = [], []
 
-            print("labels", labels)
-            print("labels", len(labels))
-            print("data", data.size())
-
             for c in range(len(labels)):
                 support = data[c]
                 for sampleIdx in range(support.size(0)):
@@ -230,16 +238,11 @@ class MapCell(MetaTemplate):
             pairs.append(torch.stack(pair_snn_01))
             pairs.append(torch.stack(pair_snn_02))
 
-            print("pairs", pairs[1].size())
-            print("pairs", pairs[0].size())
-
             return pairs, torch.tensor(pairLabels)
 
 def euclidean_dist( x, y):
     # x: N x D
     # y: M x D
-    print("x", x)
-    print("y", y)
     n = x.size(0)
     m = y.size(0)
     d = x.size(1)
