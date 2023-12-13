@@ -135,7 +135,7 @@ class MapCell(MetaTemplate):
         euclidean_dist_embeddings = self.set_forward_snn(x)
         
         # parameter of the loss to experiment with
-        margin = 1.0
+        margin = 1
 
         first_term = ((1.0-labels.float())*euclidean_dist_embeddings**2)*0.5
 
@@ -177,11 +177,12 @@ class MapCell(MetaTemplate):
             pairLabels.append(1)
 
             negIdx = np.where(labels != label)[0]
-            negSample = data[np.random.choice(negIdx)]
-            # prepare a negative pair of samples and update our lists
-            pair_snn_01.append(sample)
-            pair_snn_02.append(negSample)
-            pairLabels.append(0)
+            if len(negIdx) != 0:
+                negSample = data[np.random.choice(negIdx)]
+                # prepare a negative pair of samples and update our lists
+                pair_snn_01.append(sample)
+                pair_snn_02.append(negSample)
+                pairLabels.append(0)
 
         pairs.append(torch.stack(pair_snn_01))
         pairs.append(torch.stack(pair_snn_02))
