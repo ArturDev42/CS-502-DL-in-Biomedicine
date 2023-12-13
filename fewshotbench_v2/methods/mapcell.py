@@ -74,7 +74,7 @@ class MapCell(MetaTemplate):
 
         '''
         self.subnetwork.train()
-        freq = 6
+        freq = 10
 
         x, _ = self.parse_feature(x, is_feature=False)
 
@@ -191,6 +191,7 @@ class MapCell(MetaTemplate):
         '''
 
         output1, output2 = self.subnetwork(x[0]), self.subnetwork(x[1])
+        # you can change the distance here
         euclidean_dist_embeddings = euclidean_dist(output1,output2)
 
         return euclidean_dist_embeddings
@@ -254,4 +255,25 @@ def euclidean_dist(x, y):
     y = y.unsqueeze(0).expand(n, m, d)
 
     return torch.pow(x - y, 2).sum(2).sqrt()
+
+
+def manhattan_dist(x, y):
+    '''
+    Compute the Manhattan (L1) distance between two sets of vectors x and y.
+    x: Tensor of shape (N, D), where N is the number of samples and D is the dimensionality.
+    y: Tensor of shape (M, D), where M is the number of samples and D is the dimensionality.
+    '''
+    n = x.size(0)
+    m = y.size(0)
+    d = x.size(1)
+    assert d == y.size(1)
+
+    x = x.unsqueeze(1).expand(n, m, d)
+    y = y.unsqueeze(0).expand(n, m, d)
+
+    return torch.abs(x - y).sum(2)
+
+
+
+
 
