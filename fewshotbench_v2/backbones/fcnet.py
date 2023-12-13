@@ -23,19 +23,91 @@ class FCNet(nn.Module):
         self.final_feat_dim = layer_dim[-1]
 
     def forward(self, x):
-        # print("class FCNet(nn.Module) forward(self,x)")
-        # print("Before Encoder")
-        # print(x.size())
-        # print(x)
         x = self.encoder(x)
         return x.view(x.size(0), -1)
+
+class EnFCNet_4(nn.Module):
+
+    def __init__(self, x_dim, go_mask, hid_dim=64, z_dim=64, dropout=0.2):
+        super(EnFCNet_4, self).__init__()
+        print("EnFCNet_4")
+
+        # self.go_mask = generate_simple_go_mask(x_dim=x_dim, num_GOs=3) # for testing
+        self.go_mask = go_mask
+
+        self.num_GOs = len(self.go_mask)
+        self.masks = None
+        self.z_dim = z_dim
+
+        self.conv1 = nn.Conv1d(x_dim, 16, 1, bias=True)
+        self.conv2 = nn.Conv1d(16, 32, 1, bias=True)
+        self.conv3 = nn.Conv1d(32, 64, 1, bias=True)
+        self.conv4 = nn.Conv1d(64, 128, 1, bias=True)
+        self.relu = nn.ReLU()
+        self.dropout = nn.Dropout(p=dropout)
+        self.bn1 = nn.BatchNorm1d(self.num_GOs + 1)
+        self.bn2 = nn.BatchNorm1d(self.num_GOs + 1)
+        self.final_feat_dim = z_dim
+
+    def generate_masks(self, x):
+        batch, num_genes = x.shape
+        self.masks = torch.zeros(self.num_GOs + 1, batch, num_genes)
+        for i, genes in enumerate(self.go_mask):
+            self.masks[i, :, genes] = 1
+        selected_genes = torch.sum(self.masks[:, 0, :], axis=0)
+        self.masks[-1, :, :] = 1
+
+    def forward(self, x):
+        batch, num_genes = x.shape
+        # need to generate masks if the batch size change or
+        if self.masks is None or self.masks.shape[1] != batch:
+            self.generate_masks(x)
+            self.masks = self.masks.to(x.device)
+        # x before applying mask: (batch, numGenes)
+        x = x.view(1, batch, -1)
+        # x after applying mask: (numGOs, batch, numGenes)
+        x = self.masks * x
+        # change to (batch, numGOs, numGenes)
+        x = x.permute(1, 2, 0)
+
+        x = self.conv1(x)
+
+        x = x.permute(0, 2, 1)
+        x = self.bn1(x)
+        x = self.relu(x)
+        x = self.dropout(x)
+        x = x.permute(0, 2, 1)
+
+        x = self.conv2(x)
+
+        x = x.permute(0, 2, 1)
+        x = self.bn1(x)
+        x = self.relu(x)
+        x = self.dropout(x)
+        x = x.permute(0, 2, 1)
+
+        x = self.conv3(x)
+
+        x = x.permute(0, 2, 1)
+        x = self.bn1(x)
+        x = self.relu(x)
+        x = self.dropout(x)
+        x = x.permute(0, 2, 1)
+
+        x = self.conv4(x)
+
+        x = x.permute(0, 2, 1)
+        x = self.bn2(x)
+        x = self.relu(x)
+        x = self.dropout(x)
+
+        return x
 
 
 class EnFCNet(nn.Module):
 
     def __init__(self, x_dim, go_mask, hid_dim=64, z_dim=64, dropout=0.2):
         super(EnFCNet, self).__init__()
-        print("INSIDE EnFCNet")
 
         # self.go_mask = generate_simple_go_mask(x_dim=x_dim, num_GOs=3) # for testing
         self.go_mask = go_mask

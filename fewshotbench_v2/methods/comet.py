@@ -23,7 +23,7 @@ class COMET(MetaTemplate):
 
 
         #change distance here
-        dists = euclidean_dist(z_query, z_proto)
+        dists = manhattan_dist(z_query, z_proto)
         scores = -dists
         return scores
 
@@ -36,8 +36,14 @@ class COMET(MetaTemplate):
 
         return self.loss_fn(scores, y_query )
 
+# Different distance metrics
 
 def euclidean_dist( x, y):
+    '''
+    Compute the Euclidean distance between two sets of vectors x and y.
+    x: Tensor of shape (N, D), where N is the number of samples and D is the dimensionality.
+    y: Tensor of shape (M, D), where M is the number of samples and D is the dimensionality.
+    '''
     # x: N x D
     # y: M x D
     n = x.size(0)
@@ -51,8 +57,11 @@ def euclidean_dist( x, y):
     return torch.pow(x - y, 2).sum(2)
 
 def euclidean_dist_correct(x, y):
-    # x: N x D
-    # y: M x D
+    '''
+    Compute the Square Rooted Euclidean distance between two sets of vectors x and y.
+    x: Tensor of shape (N, D), where N is the number of samples and D is the dimensionality.
+    y: Tensor of shape (M, D), where M is the number of samples and D is the dimensionality.
+    '''
     n = x.size(0)
     m = y.size(0)
     d = x.size(1)
@@ -64,11 +73,11 @@ def euclidean_dist_correct(x, y):
     return torch.sqrt(torch.pow(x - y, 2).sum(2))
 
 def manhattan_dist(x, y):
-    """
+    '''
     Compute the Manhattan (L1) distance between two sets of vectors x and y.
     x: Tensor of shape (N, D), where N is the number of samples and D is the dimensionality.
     y: Tensor of shape (M, D), where M is the number of samples and D is the dimensionality.
-    """
+    '''
     n = x.size(0)
     m = y.size(0)
     d = x.size(1)

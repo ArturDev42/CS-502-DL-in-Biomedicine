@@ -43,19 +43,21 @@ class MapCell_v2(MetaTemplate):
 
 
     def set_forward(self, x, is_feature=False):
-        """
-        Function to set forward pass for training the model.
-        """
+        '''
+        Function to set forward pass through the Siamese network - Difference to Proto: use of Siamese Neural Network as distance metric.
+
+        Args:
+            x: Input for our Neural Network.
+
+        Returns:
+            Tensor: Scores based on the euclidean distances between the prototypes and queries.
+
+        '''
         z_support, z_query = self.parse_feature(x, is_feature)
  
         z_support = z_support.contiguous()
         z_proto = z_support.view(self.n_way, self.n_support, -1).mean(1)  # the shape of z is [n_data, n_dim]
         z_query = z_query.contiguous().view(self.n_way * self.n_query, -1)
-
-        print("support", z_support)
-        print("query", z_query)
-
-        print("proto", z_proto)
 
         dists = self.set_forward_snn([z_query, z_proto])
         scores = -dists
@@ -63,9 +65,16 @@ class MapCell_v2(MetaTemplate):
         return scores
 
     def set_forward_loss(self, x):
-        """
-        Function to compute the overall forward loss.
-        """
+        '''
+        Computes the loss for training our entire Model.
+
+        Args:
+            x ([Tensor, Tensor]): Input for our Siamese Neural Network
+
+        Returns:
+            Tensor: Output combined loss
+
+        '''
         y_query = torch.from_numpy(np.repeat(range( self.n_way ), self.n_query ))
         y_query = Variable(y_query.cuda())
 
@@ -100,9 +109,15 @@ class MapCell_v2(MetaTemplate):
 
 
     def set_forward_snn(self, x):
-        """
+        '''
         Function to set forward pass through the Siamese network.
-        """
+
+        Args:
+            x ([Tensor, Tensor]): Input pairs for our Siamese Neural Network, where x[0] is the first element, and x[1] is the second element.
+
+        Returns:
+            Tensor: Euclidean distances between the output embeddings of the Siamese network.
+        '''
 
         output1, output2 = self.subnetwork(x[0]), self.subnetwork(x[1])
         euclidean_dist_embeddings = euclidean_dist(output1,output2)

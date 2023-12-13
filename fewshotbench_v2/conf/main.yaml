@@ -14,9 +14,9 @@ exp:
 iter_num: 600
 lr: 0.001
 mode: train
-model: EnFCNet
+model: FCNet
 n_query: 15
-n_shot: 1
+n_shot: 5
 n_way: 5
 optimizer: Adam
 optimizer_cls:

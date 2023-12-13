@@ -62,30 +62,23 @@ class MapCell(MetaTemplate):
 
         return scores
 
-    def train_siamese_network(self, x, y):
+    def train_siamese_network(self, x):
         '''
         Function to train our Siamese Network.
 
         Args:
             x: Input for our Siamese Neural Network
-            # TODO: vllt y nicht notwendig
-            y: Labels indicating whether the input tuples belong to the same class (1) or different classes (0)
 
         Returns:
             Tensor: Output contrastive loss
 
         '''
         self.subnetwork.train()
-        freq = 10
+        freq = 6
 
         x, _ = self.parse_feature(x, is_feature=False)
 
-        print("after parse")
-        print(x)
-        print(x.size())
-
-        y = y[:self.n_support].cpu().data.numpy()
-        pairs, pair_labels = self.split_data_into_pairs(x, y)
+        pairs, pair_labels = self.split_data_into_pairs(x)
 
         # Convert pairs and labels to PyTorch variables
         pairs = [Variable(pair.to(self.device)) for pair in pairs]
@@ -98,9 +91,6 @@ class MapCell(MetaTemplate):
         for pair0, pair1, label in zip(pairs[0], pairs[1], pair_labels):
             pair0 = pair0.reshape(1, -1)
             pair1 = pair1.reshape(1, -1)
-            print("pair")
-            print(pair0)
-            print(pair0.size())
             snn_loss = self.set_forward_snn_loss([pair0, pair1], label)
             if i % freq == 0:
                 snn_loss.backward()
@@ -123,9 +113,7 @@ class MapCell(MetaTemplate):
         print_freq = 10
 
         avg_loss = 0
-        for i, (x, y) in enumerate(train_loader):
-            print("x", x)
-            print("shape", x.size())
+        for i, (x, _) in enumerate(train_loader):
             if isinstance(x, list):
                 self.n_query = x[0].size(1) - self.n_support
                 if self.change_way:
@@ -135,7 +123,7 @@ class MapCell(MetaTemplate):
                 if self.change_way:
                     self.n_way = x.size(0)
             # train the siamese network
-            self.train_siamese_network(x.to(self.device), y.to(self.device))
+            self.train_siamese_network(x.to(self.device))
             optimizer.zero_grad()
             loss = self.set_forward_loss(x)
             loss.backward()
@@ -188,7 +176,7 @@ class MapCell(MetaTemplate):
 
         second_term = 0.5*torch.maximum(torch.tensor(0.0),margin-euclidean_dist_embeddings)**2
         contrastive_loss = first_term + second_term
-        # Use mean to get the average loss overall classes, want to minimize the loss for all distances
+        
         return contrastive_loss.mean()
 
     def set_forward_snn(self, x):
@@ -206,49 +194,8 @@ class MapCell(MetaTemplate):
         euclidean_dist_embeddings = euclidean_dist(output1,output2)
 
         return euclidean_dist_embeddings
-    
-    # def split_data_into_pairs(self, data, labels):
-    #     '''
-    #     Preprocess data and labels for Siamese Neural Network training.
 
-    #     Args:
-    #         data (Tensor): Input data for Siamese Neural Network training.
-    #         labels (Tensor): Labels corresponding to the input data.
-
-    #     Returns:
-    #         Tuple[List[Tensor], Tensor]: A tuple containing a list of pairs of samples and corresponding pair labels.
-
-    #     '''
-    #     pairs, pairLabels = [], []
-    #     classes = np.unique(labels, axis=0)
-    #     pair_snn_01, pair_snn_02 = [], []
-
-    #     for sampleIdx in range(len(labels)):
-            
-    #         sample = data[sampleIdx]
-    #         label = labels[sampleIdx]
-    #         # randomly pick a sample that belongs to the same class
-    #         posSampleIdx = np.random.choice(np.where(labels == label)[0])
-    #         posSample = data[posSampleIdx]
-    #         # create a positive pair
-    #         pair_snn_01.append(sample)
-    #         pair_snn_02.append(posSample)
-    #         pairLabels.append(1)
-
-    #         negIdx = np.where(labels != label)[0]
-    #         if len(negIdx) != 0:
-    #             negSample = data[np.random.choice(negIdx)]
-    #             # prepare a negative pair of samples and update our lists
-    #             pair_snn_01.append(sample)
-    #             pair_snn_02.append(negSample)
-    #             pairLabels.append(0)
-
-    #     pairs.append(torch.stack(pair_snn_01))
-    #     pairs.append(torch.stack(pair_snn_02))
-
-    #     return pairs, torch.tensor(pairLabels)
-
-    def split_data_into_pairs(self, data, labels):
+    def split_data_into_pairs(self, data):
         '''
         Preprocess data and labels for Siamese Neural Network training.
 
@@ -262,9 +209,7 @@ class MapCell(MetaTemplate):
         pairs, pairLabels = [], []
         pair_snn_01, pair_snn_02 = [], []
 
-        # TODO: labels not needed - delete?
-
-        for c in range(len(labels)):
+        for c in range(data.size(0)):
             support = data[c]
             for sampleIdx in range(support.size(0)):
                 sample = support[sampleIdx]
@@ -276,7 +221,7 @@ class MapCell(MetaTemplate):
                 pair_snn_02.append(posSample)
                 pairLabels.append(1)
 
-                negIdx = np.where(np.arange(len(labels)) != c)[0]
+                negIdx = np.where(np.arange(data.size(0)) != c)[0]
                 # In case of 1-way learning - no negative examples possible
                 if len(negIdx) != 0:
                     # pick a random sample from a different class
@@ -295,8 +240,11 @@ class MapCell(MetaTemplate):
 
 
 def euclidean_dist(x, y):
-    # x: N x D
-    # y: M x D
+    '''
+    Compute the Euclidean distance between two sets of vectors x and y.
+    x: Tensor of shape (N, D), where N is the number of samples and D is the dimensionality.
+    y: Tensor of shape (M, D), where M is the number of samples and D is the dimensionality.
+    '''
     n = x.size(0)
     m = y.size(0)
     d = x.size(1)

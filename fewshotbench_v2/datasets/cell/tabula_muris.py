@@ -120,6 +120,7 @@ class TMSetDataset(TMDataset):
     def dim(self):
         return self.x_dim
 
+    # return go mask for backbone
     def get_mask(self):
         return self.go_mask
 

@@ -4,9 +4,8 @@ import subprocess
 yaml_path = 'conf/main.yaml'
 
 
-#add more hypers
-datasets = ["tabula_muris"]
-methods = ["mapcell"]
+datasets = ["tabula_muris", "swissprot"]
+methods = ["baseline", "maml" , "matchingnet" , "protonet"]
 
 #make sure original parameters are in:
 with open(yaml_path, 'r') as file:
