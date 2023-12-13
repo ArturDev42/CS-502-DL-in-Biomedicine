@@ -7,7 +7,9 @@ import torch.optim as optim
 from methods.meta_template import MetaTemplate
 import wandb
 
-
+'''
+In this version of the MapCell Model we train one common loss.
+'''
 class MapCell_v2(MetaTemplate):
     def __init__(self, backbone, n_way, n_support):
         super(MapCell_v2, self).__init__(backbone, n_way, n_support)
@@ -49,6 +51,11 @@ class MapCell_v2(MetaTemplate):
         z_support = z_support.contiguous()
         z_proto = z_support.view(self.n_way, self.n_support, -1).mean(1)  # the shape of z is [n_data, n_dim]
         z_query = z_query.contiguous().view(self.n_way * self.n_query, -1)
+
+        print("support", z_support)
+        print("query", z_query)
+
+        print("proto", z_proto)
 
         dists = self.set_forward_snn([z_query, z_proto])
         scores = -dists

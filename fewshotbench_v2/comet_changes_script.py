@@ -16,7 +16,7 @@ def modify_file(file_path, modifications):
 def modify_configurations(comet):
     # Define the modifications for each file
     tabula_muris_modifications = [
-        (r'^( *)(_target_: backbones.fcnet.EnFCNet)$', r'\1\2') if comet else (r'^( *)#(_target_: backbones.fcnet.FCNet)$', r'\1#\2')
+        (r'^( *)(_target_: backbones.fcnet.EnFCNet)$', r'\1\2') if comet else (r'^( *)#(_target_: backbones.fcnet.EnFCNet)$', r'\1#\2')
     ]
 
     main_modifications = [

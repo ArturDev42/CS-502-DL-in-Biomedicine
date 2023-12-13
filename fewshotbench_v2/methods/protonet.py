@@ -33,11 +33,6 @@ class ProtoNet(MetaTemplate):
 
         scores = self.set_forward(x)
 
-        #print("self.loss_fn(scores, y_query )")
-        print("scores", scores)
-        print(scores.size())
-        #print("y_query", y_query)
-
         return self.loss_fn(scores, y_query )
 
 

@@ -6,7 +6,7 @@ yaml_path = 'conf/main.yaml'
 
 #add more hypers
 datasets = ["tabula_muris"]
-methods = ["maml"]
+methods = ["mapcell"]
 
 #make sure original parameters are in:
 with open(yaml_path, 'r') as file:

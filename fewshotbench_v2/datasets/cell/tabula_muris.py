@@ -17,8 +17,6 @@ def create_go_mask(adata, go2gene):
         go_mask.append([gene2index[gene] for gene in go_genes])
     return go_mask
 
-
-
 class TMDataset(FewShotDataset, ABC):
     _dataset_name = 'tabula_muris'
     _dataset_url = 'http://snap.stanford.edu/comet/data/tabula-muris-comet.zip'
@@ -120,6 +118,9 @@ class TMSetDataset(TMDataset):
     @property
     def dim(self):
         return self.x_dim
+
+    def get_mask(self):
+        return self.go_mask
 
     def get_data_loader(self) -> DataLoader:
         sampler = EpisodicBatchSampler(len(self), self.n_way, self.n_episode)

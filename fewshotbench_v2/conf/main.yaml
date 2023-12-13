@@ -14,7 +14,7 @@ exp:
 iter_num: 30
 lr: 0.001
 mode: train
-model: FCNet
+model: EnFCNet
 n_query: 15
 n_shot: 5
 n_way: 5

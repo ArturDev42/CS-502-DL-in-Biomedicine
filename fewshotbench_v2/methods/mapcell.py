@@ -11,7 +11,6 @@ import wandb
 class MapCell(MetaTemplate):
     def __init__(self, backbone, n_way, n_support):
         super(MapCell, self).__init__(backbone, n_way, n_support)
-        print("ProtoNet Backbone:", backbone)
         self.loss_fn = nn.CrossEntropyLoss()
 
         # Create Siamese subnetwork
@@ -66,7 +65,7 @@ class MapCell(MetaTemplate):
         x, _ = self.parse_feature(x, is_feature=False)
 
         y = y[:self.n_support].cpu().data.numpy()
-        pairs, pair_labels = self.split_data_into_pairs(x, y)
+        pairs, pair_labels = self.split_data_into_pairs_supp(x, y)
 
         # Convert pairs and labels to PyTorch variables
         pairs = [Variable(pair.to(self.device)) for pair in pairs]
@@ -151,6 +150,8 @@ class MapCell(MetaTemplate):
         """
 
         output1, output2 = self.subnetwork(x[0]), self.subnetwork(x[1])
+        print("output", output1)
+        print("output", output1.size())
         euclidean_dist_embeddings = euclidean_dist(output1,output2)
 
         return euclidean_dist_embeddings
@@ -166,6 +167,7 @@ class MapCell(MetaTemplate):
         pair_snn_01, pair_snn_02 = [], []
 
         for sampleIdx in range(len(labels)):
+            
             sample = data[sampleIdx]
             label = labels[sampleIdx]
             # randomly pick a sample that belongs to the same class
@@ -189,9 +191,55 @@ class MapCell(MetaTemplate):
 
         return pairs, torch.tensor(pairLabels)
 
+    def split_data_into_pairs_supp(self, data, labels):
+            """
+            Preprocess data and labels for Siamese Neural Network training.
+            support for training siamese, query for validation
+
+            """
+            pairs, pairLabels = [], []
+            classes = np.unique(labels, axis=0)
+            pair_snn_01, pair_snn_02 = [], []
+
+            print("labels", labels)
+            print("labels", len(labels))
+            print("data", data.size())
+
+            for c in range(len(labels)):
+                support = data[c]
+                for sampleIdx in range(support.size(0)):
+                    sample = support[sampleIdx]
+                    # randomly pick a sample that belongs to the same class
+                    posSampleIdx = np.random.choice(support.size(0))
+                    posSample = support[posSampleIdx]
+                    # create a positive pair
+                    pair_snn_01.append(sample)
+                    pair_snn_02.append(posSample)
+                    pairLabels.append(1)
+
+                    negIdx = np.where(np.arange(len(labels)) != c)[0]
+                    if len(negIdx) != 0:
+                        negClass = data[np.random.choice(negIdx)]
+                        negSampleIdx = np.random.choice(negClass.size(0))
+                        negSample = negClass[negSampleIdx]
+                        # prepare a negative pair of samples and update our lists
+                        pair_snn_01.append(sample)
+                        pair_snn_02.append(negSample)
+                        pairLabels.append(0)
+
+            pairs.append(torch.stack(pair_snn_01))
+            pairs.append(torch.stack(pair_snn_02))
+
+            print("pairs", pairs[1].size())
+            print("pairs", pairs[0].size())
+
+            return pairs, torch.tensor(pairLabels)
+
 def euclidean_dist( x, y):
     # x: N x D
     # y: M x D
+    print("x", x)
+    print("y", y)
     n = x.size(0)
     m = y.size(0)
     d = x.size(1)
